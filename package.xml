@@ -4,10 +4,10 @@
   <version>3.3.0</version>
   <description>The ti_mmwave_rospkg package. Publish messages with doppler information. Multi-sensor and camera overlay support. Modified by Leo Zhang</description>
 
-  <maintainer email="dr.leo.zhang@outlook.com">Leo Zhang</maintainer>
+  <maintainer email="shrigourisgs233@gmail.com">shrigouri</maintainer>
   <license>BSD</license>
   <url type="website">https://github.com/radar-lab/ti_mmwave_rospkg</url>
-  <author email="dr.leo.zhang@outlook.com">Leo Zhang</author>
+  <author email="shrigourisgs233@gmail.com">Leo Zhang</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
