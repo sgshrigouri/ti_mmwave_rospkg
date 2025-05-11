@@ -1,61 +1,61 @@
-#include "ros/ros.h"
-#include "ti_mmwave_rospkg/mmWaveCLI.h"
-#include <cstdlib>
+#include <rclcpp/rclcpp.hpp>
 #include <fstream>
-#include <stdio.h>
-#include <regex>
-#include "ParameterParser.h"
+#include <serial/serial.h>
+#include "ti_mmwave_rospkg/srv/mm_wave_c_l_i.hpp"
+
+class MMWaveQuickConfig : public rclcpp::Node {
+public:
+  MMWaveQuickConfig() : Node("mmWaveQuickConfig") {
+    std::string config_file = this->declare_parameter("config_file", "");
+    std::string user_port = this->declare_parameter("user_port", "/dev/ttyACM1");
+    int user_baud = this->declare_parameter("user_baud", 115200);
+
+    serial::Serial serial_port;
+    serial_port.setPort(user_port);
+    serial_port.setBaudrate(user_baud);
+    serial::Timeout to = serial::Timeout::simpleTimeout(1000);
+    serial_port.setTimeout(to);
+
+    try {
+      serial_port.open();
+    } catch (serial::IOException &e) {
+      RCLCPP_ERROR(this->get_logger(), "Unable to open User serial port: %s", e.what());
+      return;
+    }
+
+    if (serial_port.isOpen()) {
+      RCLCPP_INFO(this->get_logger(), "User Serial Port initialized");
+    } else {
+      RCLCPP_ERROR(this->get_logger(), "User Serial Port failed to open");
+      return;
+    }
+
+    std::ifstream file(config_file);
+    if (!file.is_open()) {
+      RCLCPP_ERROR(this->get_logger(), "Unable to open config file: %s", config_file.c_str());
+      return;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+      if (!line.empty() && line[0] != '%') {
+        serial_port.write(line + "\n");
+        std::string response = serial_port.readline();
+        RCLCPP_INFO(this->get_logger(), "Sent: %s, Received: %s", line.c_str(), response.c_str());
+        rclcpp::sleep_for(std::chrono::milliseconds(100));
+      }
+    }
+
+    file.close();
+    serial_port.close();
+    RCLCPP_INFO(this->get_logger(), "Configuration completed");
+  }
+};
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "mmWaveQuickConfig");
-    ros::NodeHandle nh;
-    ti_mmwave_rospkg::mmWaveCLI srv;
-    if (argc != 2) {
-        ROS_INFO("mmWaveQuickConfig: usage: mmWaveQuickConfig /file_directory/params.cfg");
-        return 1;
-    } else 
-        ROS_INFO("mmWaveQuickConfig: Configuring mmWave device using config file: %s", argv[1]);
-    
-    ros::ServiceClient client = nh.serviceClient<ti_mmwave_rospkg::mmWaveCLI>("/mmWaveCLI");
-    std::ifstream myParams;
-    ti_mmwave_rospkg::ParameterParser parser;
-    //wait for service to become available
-    ros::service::waitForService("/mmWaveCLI", 10000); 
-    
-    //wait 0.5 secs to avoid multi-sensor conflicts
-    ros::Duration(0.5).sleep();
-
-    myParams.open(argv[1]);
-    
-    if (myParams.is_open()) {
-        while( std::getline(myParams, srv.request.comm)) {
-        // Remove Windows carriage-return if present
-        srv.request.comm.erase(std::remove(srv.request.comm.begin(), srv.request.comm.end(), '\r'), srv.request.comm.end());
-        // Ignore comment lines (first non-space char is '%') or blank lines
-        if (!(std::regex_match(srv.request.comm, std::regex("^\\s*%.*")) || std::regex_match(srv.request.comm, std::regex("^\\s*")))) {
-            // ROS_INFO("mmWaveQuickConfig: Sending command: '%s'", srv.request.comm.c_str() );
-            if (client.call(srv)) {
-            if (std::regex_search(srv.response.resp, std::regex("Done"))) {
-                // ROS_INFO("mmWaveQuickConfig: Command successful (mmWave sensor responded with 'Done')");            
-                parser.ParamsParser(srv, nh);
-            } else {
-                ROS_ERROR("mmWaveQuickConfig: Command failed (mmWave sensor did not respond with 'Done')");
-                ROS_ERROR("mmWaveQuickConfig: Response: '%s'", srv.response.resp.c_str() );
-                return 1;
-            }
-            } else {
-            ROS_ERROR("mmWaveQuickConfig: Failed to call service mmWaveCLI");
-            ROS_ERROR("%s", srv.request.comm.c_str() );
-            return 1;
-            }
-        }
-        }
-        parser.CalParams(nh);
-        myParams.close();
-    } else {
-        ROS_ERROR("mmWaveQuickConfig: Failed to open File %s", argv[1]);
-        return 1;
-    }
-    ROS_INFO("mmWaveQuickConfig: mmWaveQuickConfig will now terminate. Done configuring mmWave device using config file: %s", argv[1]);
-    return 0;
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<MMWaveQuickConfig>();
+  rclcpp::spin_some(node);
+  rclcpp::shutdown();
+  return 0;
 }

@@ -38,46 +38,22 @@
  *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
 */
-#ifndef MMWAVE_COMM_SRV_H
-#define MMWAVE_COMM_SRV_H
+#ifndef MMWAVE_COMM_SRV_HPP_
+#define MMWAVE_COMM_SRV_HPP_
 
-/*Include ROS specific headers*/
-#include "ros/ros.h"
-#include "std_msgs/String.h"
-#include "serial/serial.h"  
-#include <pluginlib/class_list_macros.h>
-#include <nodelet/nodelet.h>
+#include <rclcpp/rclcpp.hpp>
+#include "ti_mmwave_rospkg/srv/mm_wave_c_l_i.hpp"
+#include "serial/serial.h"
 
-/*Include standard C/C++ headers*/
-#include <iostream>
-#include <cstdio>
-#include <sstream>
+class mmWaveCommSrv : public rclcpp::Node {
+public:
+  explicit mmWaveCommSrv(const rclcpp::NodeOptions & options);
 
-/*mmWave Driver Headers*/
-#include <ti_mmwave_rospkg/mmWaveCLI.h>
+private:
+  bool commSrv(const std::shared_ptr<ti_mmwave_rospkg::srv::MmWaveCLI::Request> req,
+               std::shared_ptr<ti_mmwave_rospkg::srv::MmWaveCLI::Response> res);
+  rclcpp::Service<ti_mmwave_rospkg::srv::MmWaveCLI>::SharedPtr server_;
+  std::shared_ptr<serial::Serial> mmWavePort_;
+};
 
-namespace ti_mmwave_rospkg
-{
-
-class mmWaveCommSrv : public nodelet::Nodelet
-{
-   public:
-   
-   mmWaveCommSrv();
-   
-   private:
-   
-   virtual void onInit();
-   
-   bool commSrv_cb(ti_mmwave_rospkg::mmWaveCLI::Request  &req, ti_mmwave_rospkg::mmWaveCLI::Response &res);
-   
-   ros::ServiceServer commSrv;
-   
-   std::string mySerialPort;
-   
-   int myBaudRate;
-}; //Class mmWaveCommSrv 
-
-} //namespace ti_mmwave_rospkg 
-
-#endif
+#endif // MMWAVE_COMM_SRV_HPP_

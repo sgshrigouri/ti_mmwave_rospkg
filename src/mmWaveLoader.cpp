@@ -1,22 +1,25 @@
-#include "ros/ros.h"
-#include "nodelet/loader.h"
+#include <rclcpp/rclcpp.hpp>
+#include "DataHandlerClass.h"
 
-int main(int argc, char **argv)
-{
+class MMWaveLoader : public rclcpp::Node {
+public:
+  MMWaveLoader() : Node("mmWaveLoader") {
+    data_handler_ = std::make_shared<DataUARTHandler>(this->shared_from_this());
+    data_handler_->setMaxAllowedElevationAngleDeg(this->declare_parameter("max_elevation_angle_deg", 90.0));
+    data_handler_->setMaxAllowedAzimuthAngleDeg(this->declare_parameter("max_azimuth_angle_deg", 90.0));
+    data_handler_->start();
 
-    ros::init(argc, argv, "mmWave_Manager");
-    
-    nodelet::Loader manager(true);
-    
-    nodelet::M_string remap(ros::names::getRemappings());
-    
-    nodelet::V_string nargv;
-    
-    manager.load("mmWaveCommSrv", "ti_mmwave_rospkg/mmWaveCommSrv", remap, nargv);
-    
-    manager.load("mmWaveDataHdl", "ti_mmwave_rospkg/mmWaveDataHdl", remap, nargv);
-    
-    ros::spin();
-    
-    return 0;
+    RCLCPP_INFO(this->get_logger(), "mmWaveLoader initialized");
+  }
+
+private:
+  std::shared_ptr<DataUARTHandler> data_handler_;
+};
+
+int main(int argc, char **argv) {
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<MMWaveLoader>();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+  return 0;
 }
